@@ -7,6 +7,7 @@ var _t = instance.web._t,
 var QWeb = instance.web.qweb;
 instance.web.views.add('gantt', 'instance.web_gantt.GanttView');
 
+
 instance.web_gantt.GanttView = instance.web.View.extend({
     display_name: _lt('Gantt'),
     template: "GanttView",
@@ -15,7 +16,11 @@ instance.web_gantt.GanttView = instance.web.View.extend({
         var self = this;
         this._super.apply(this, arguments);
         this.has_been_loaded = $.Deferred();
-        this.chart_id = _.uniqueId();
+        this.chart_id = _.uniqueId('gantt_');
+        var target = '<div id="' + this.chart_id + '" />';
+        // XXX: dunno why I have not element here
+        // this.$el.html(target);
+        $('.oe_view_manager_view_gantt').html(target);
         // Gantt configuration
         gantt.config.autosize = "y";
         gantt.config.scale_offset_minimal = false;
@@ -72,7 +77,7 @@ instance.web_gantt.GanttView = instance.web.View.extend({
             return self.fields_view.arch.attrs[key] || '';
         }));
         fields = _.uniq(fields.concat(_.pluck(this.colors, "field").concat(n_group_bys)));
-        
+
         return $.when(this.has_been_loaded).then(function() {
             return self.dataset.read_slice(fields, {
                 domain: domains,
@@ -91,7 +96,7 @@ instance.web_gantt.GanttView = instance.web.View.extend({
         var ids = _.pluck(tasks, "id");
         return this.dataset.name_get(ids).then(function(names) {
             var ntasks = _.map(tasks, function(task) {
-                return _.extend({__name: _.detect(names, function(name) { return name[0] == task.id; })[1]}, task); 
+                return _.extend({__name: _.detect(names, function(name) { return name[0] == task.id; })[1]}, task);
             });
             return self.on_data_loaded_2(ntasks, group_bys);
         });
@@ -112,7 +117,7 @@ instance.web_gantt.GanttView = instance.web.View.extend({
             });
             this.fields._pseudo_group_by = {type: "string"};
         }
-        
+
         // get the groups
         var split_groups = function(tasks, group_bys) {
             if (group_bys.length === 0)
@@ -133,7 +138,7 @@ instance.web_gantt.GanttView = instance.web.View.extend({
             return groups;
         }
         var groups = split_groups(tasks, group_bys);
-        
+
         // Use scale_zoom attribute in xml file to specify zoom timeline(day,week,month,year), By default month
         var scale = this.fields_view.arch.attrs.scale_zoom;
         if (!_.contains(['day', 'week', 'month', 'year'], scale)) {
@@ -157,7 +162,7 @@ instance.web_gantt.GanttView = instance.web.View.extend({
                 _t("End date") + ":</b> " + _t(moment(end).format(normalize_format)) +
                 "<br/><b>" + _t("Duration") + ":</b> " + duration.toFixed(2) + " " + _t("Hours");
         };
-        
+
         var tasks = [];
         var total_percent = 0, total_task = 0;
         // creation of the chart
@@ -359,7 +364,7 @@ instance.web_gantt.GanttView = instance.web.View.extend({
         data[self.fields_view.arch.attrs.date_start] =
             instance.web.auto_date_to_str(start, self.fields[self.fields_view.arch.attrs.date_start].type);
         if (self.fields_view.arch.attrs.date_stop) {
-            data[self.fields_view.arch.attrs.date_stop] = 
+            data[self.fields_view.arch.attrs.date_stop] =
                 instance.web.auto_date_to_str(end, self.fields[self.fields_view.arch.attrs.date_stop].type);
         } else { // we assume date_duration is defined
             data[self.fields_view.arch.attrs.date_delay] = duration;

@@ -15,15 +15,31 @@
 
         <xpath expr="." position="inside">
             <link rel="stylesheet"
-                  href="/sitibt_web_gantt/static/src/css/gantt.css"/>
+                  href="/dev_web_gantt/static/src/css/gantt.css"/>
             <link rel="stylesheet"
-                  href="/sitibt_web_gantt/static/lib/dhtmlxGantt/codebase/dhtmlxgantt.css"/>
+                  href="/dev_web_gantt/static/lib/dhtmlxGantt/codebase/dhtmlxgantt.css"/>
             <script type="text/javascript"
-                    src="/sitibt_web_gantt/static/lib/dhtmlxGantt/sources/dhtmlxcommon.js"></script>
+                    src="/dev_web_gantt/static/lib/dhtmlxGantt/sources/dhtmlxcommon.js"></script>
             <script type="text/javascript"
-                    src="/sitibt_web_gantt/static/lib/dhtmlxGantt/sources/dhtmlxgantt_tooltip.js"></script>
+                    src="/dev_web_gantt/static/lib/dhtmlxGantt/sources/dhtmlxgantt_tooltip.js"></script>
             <script type="text/javascript"
-                    src="/sitibt_web_gantt/static/src/js/gantt.js"></script>
+                    src="/dev_web_gantt/static/src/js/gantt.js"></script>
+        </xpath>
+
+        <!-- replace formats with the one from odoo dev -->
+        <xpath expr="//script[contains(@src,'formats.js')]" position="attributes">
+            <attribute name="src">/dev_web_gantt/static/src/js/formats.js"</attribute>
+        </xpath>
+
+    </template>
+
+    <template id="assets_common"
+        name="sitibt web_gantt assets"
+        inherit_id="web.assets_common">
+
+        <!-- add moment lib -->
+        <xpath expr="//script[contains(@src,'spinjs/spin.js')]" position="after">
+            <script type="text/javascript" src="/dev_web_gantt/static/lib/moment/moment.js"></script>
         </xpath>
 
     </template>

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
 #
-# Copyright (C) 2015 Giacomo Spettoli (giacomo.spettoli@abstract.it)
+#    Copyright (C) 2015 Abstract srl (<http://www.abstract.it>)
+#    All Rights Reserved
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -18,7 +19,7 @@
 #
 ##############################################################################
 {
-    'name': 'Siti B&T - Web Gant override',
+    'name': 'Web Gant from odoo dev',
     'description': """
 Odoo Web Gantt chart view.
 ==========================
@@ -27,7 +28,7 @@ Override to get features from dev version.
 
 See https://github.com/odoo-dev/odoo/commit/9f07606cf9b26d14ae38c0d1093204a3f9fb2008.
 """, # noqa
-    'version': '0.1',
+    'version': '2.0',
     'depends': [
         'web_gantt',
         'project',

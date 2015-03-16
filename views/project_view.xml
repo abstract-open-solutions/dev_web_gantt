@@ -13,9 +13,10 @@
                         date_start="date_start"
                         progress="progress_rate"
                         string="Projects"
-                        action="project.action_view_task_gantt"
                         relative_field="project_id">
                     </gantt>
+                        <!-- action="action_view_task_gantt" -->
+
                 </xpath>
             </field>
         </record>
@@ -40,11 +41,11 @@
         </record>
 
 
-        <record id="action_view_task_gantt" model="ir.actions.act_window">
+        <!-- <record id="action_view_task_gantt" model="ir.actions.act_window">
             <field name="name">Tasks</field>
             <field name="res_model">project.task</field>
             <field name="view_mode">gantt,kanban,tree,form,calendar,graph</field>
         </record>
-
+ -->
     </data>
 </openerp>
