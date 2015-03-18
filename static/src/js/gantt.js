@@ -12,6 +12,7 @@ instance.web_gantt.GanttView = instance.web.View.extend({
     display_name: _lt('Gantt'),
     template: "GanttView",
     view_type: "gantt",
+    fields_to_get: ["date_start", "date_delay", "date_stop", "progress"],
     init: function() {
         var self = this;
         this._super.apply(this, arguments);
@@ -50,7 +51,10 @@ instance.web_gantt.GanttView = instance.web.View.extend({
             this.colors = _(this.fields_view.arch.attrs.colors.split(';')).chain().compact().map(function(color_pair) {
                 var pair = color_pair.split(':'), color = pair[0], expr = pair[1];
                 var temp = py.parse(py.tokenize(expr));
-                return {'color': color, 'field': temp.expressions[0].value, 'opt': temp.operators[0], 'value': temp.expressions[1].value};
+                return {'color': color,
+                        'field': temp.expressions[0].value,
+                        'opt': temp.operators[0],
+                        'value': temp.expressions[1].value};
             }).value();
         }
         return self.alive(new instance.web.Model(this.dataset.model)
@@ -73,7 +77,7 @@ instance.web_gantt.GanttView = instance.web.View.extend({
             n_group_bys = group_bys;
         }
         // gather the fields to get
-        var fields = _.compact(_.map(["date_start", "date_delay", "date_stop", "progress"], function(key) {
+        var fields = _.compact(_.map(self.fields_to_get, function(key) {
             return self.fields_view.arch.attrs[key] || '';
         }));
         fields = _.uniq(fields.concat(_.pluck(this.colors, "field").concat(n_group_bys)));
@@ -96,7 +100,12 @@ instance.web_gantt.GanttView = instance.web.View.extend({
         var ids = _.pluck(tasks, "id");
         return this.dataset.name_get(ids).then(function(names) {
             var ntasks = _.map(tasks, function(task) {
-                return _.extend({__name: _.detect(names, function(name) { return name[0] == task.id; })[1]}, task);
+                return _.extend({
+                    __name: _.detect(names,
+                                     function(name) {
+                                        return name[0] == task.id;
+                                     })[1],
+                }, task);
             });
             return self.on_data_loaded_2(ntasks, group_bys);
         });
@@ -119,25 +128,7 @@ instance.web_gantt.GanttView = instance.web.View.extend({
         }
 
         // get the groups
-        var split_groups = function(tasks, group_bys) {
-            if (group_bys.length === 0)
-                return tasks;
-            var groups = [];
-            _.each(tasks, function(task) {
-                var group_name = task[_.first(group_bys)];
-                var group = _.find(groups, function(group) { return _.isEqual(group.name, group_name); });
-                if (group === undefined) {
-                    group = {name:group_name, tasks: [], __is_group: true};
-                    groups.push(group);
-                }
-                group.tasks.push(task);
-            });
-            _.each(groups, function(group) {
-                group.tasks = split_groups(group.tasks, _.rest(group_bys));
-            });
-            return groups;
-        }
-        var groups = split_groups(tasks, group_bys);
+        var groups = self.split_groups(tasks, group_bys);
 
         // Use scale_zoom attribute in xml file to specify zoom timeline(day,week,month,year), By default month
         var scale = this.fields_view.arch.attrs.scale_zoom;
@@ -166,91 +157,12 @@ instance.web_gantt.GanttView = instance.web.View.extend({
         var tasks = [];
         var total_percent = 0, total_task = 0;
         // creation of the chart
-        var generate_task_info = function(task, plevel, project_id) {
-            if (_.isNumber(task[self.fields_view.arch.attrs.progress])) {
-                var percent = task[self.fields_view.arch.attrs.progress] || 0;
-            } else {
-                var percent = 100;
-            }
-            var level = plevel || 0;
-            project_id = project_id || _.uniqueId("gantt_project_");
-            if (task.__is_group) {
-                var task_infos = _.compact(_.map(task.tasks, function(sub_task) {
-                    return generate_task_info(sub_task, level + 1, project_id);
-                }));
-                if (task_infos.length == 0)
-                    return;
-                var task_start = _.reduce(_.pluck(task_infos, "task_start"), function(date, memo) {
-                    return memo === undefined || date < memo ? date : memo;
-                }, undefined);
-                var task_stop = _.reduce(_.pluck(task_infos, "task_stop"), function(date, memo) {
-                    return memo === undefined || date > memo ? date : memo;
-                }, undefined);
-                var duration = (task_stop.getTime() - task_start.getTime()) / (1000 * 60 * 60);
-                var group_name = task.name ? instance.web.format_value(task.name, self.fields[group_bys[level]]) : "-";
-                if (level == 0) {
-                    gantt.addTask({
-                        'id': project_id,
-                        'text': group_name,
-                        'start_date': task_start,
-                        'duration': ((duration / 24) * 8) * 3 || 1,
-                        'progress': total_percent / total_task / 100,
-                    });
-                    total_task = total_percent = 0;
-                    return {task_start: task_start, task_stop: task_stop};
-                } else {
-                  var id = _.uniqueId("gantt_project_task_");
-                  tasks.push({
-                      'id': id,
-                      'text': group_name,
-                      'start_date': task_start,
-                      'duration': duration || 1,
-                      'progress': percent / 100,
-                      'parent': project_id
-                  });
-                  total_task = total_percent = 0;
-                  return {task_start: task_start, task_stop: task_stop};
-              }
-            } else {
-                var task_name = task.__name;
-                var duration_in_business_hours = false;
-                var task_start = instance.web.auto_str_to_date(task[self.fields_view.arch.attrs.date_start]);
-                if (!task_start)
-                    return;
-                var task_stop;
-                if (self.fields_view.arch.attrs.date_stop) {
-                    task_stop = instance.web.auto_str_to_date(task[self.fields_view.arch.attrs.date_stop]);
-                    if (!task_stop)
-                        task_stop = task_start;
-                } else { // we assume date_duration is defined
-                    var tmp = instance.web.format_value(task[self.fields_view.arch.attrs.date_delay],
-                        self.fields[self.fields_view.arch.attrs.date_delay]);
-                    if (!tmp)
-                        return;
-                    var m_task_start = moment(task_start).add(tmp, 'hours');
-                    task_stop = m_task_start.toDate();
-                }
-                var duration = (task_stop.getTime() - task_start.getTime()) / (1000 * 60 * 60);
-                total_percent += percent, total_task += 1;
-                // Check condition to apply color.
-                _.each(self.colors, function(color){
-                    if(eval("'" + task[color.field] + "' " + color.opt + " '" + color.value + "'"))
-                        self.color = color.color;
-                });
-                tasks.push({
-                    'id': "gantt_task_" + task.id,
-                    'text': task_name,
-                    'start_date': task_start,
-                    'duration': (((duration / 24) * 8) * 3 || 1),
-                    'progress': percent / 100,
-                    'parent': project_id,
-                    'color': self.color
-                });
-                self.color = undefined;
-                return {task_start: task_start, task_stop: task_stop};
-            }
-        }
-        _.each(groups, function(group) { generate_task_info(group, 0); });
+
+        _.each(groups, function(group) {
+            self.generate_task_info(group, 0, null,
+                                    tasks, total_percent, total_task,
+                                    group_bys);
+        });
         gantt.parse({"data": tasks});
         gantt.attachEvent("onTaskClick", function(id, e){
             if(gantt.hasChild(id)) return true;
@@ -301,6 +213,126 @@ instance.web_gantt.GanttView = instance.web.View.extend({
             self.scale_zoom(self.$el.find(e.currentTarget).find("input").val());
             gantt.parse({"data": tasks});
         });
+    },
+    split_groups: function(tasks, group_bys) {
+        var self = this;
+        if (group_bys.length === 0)
+            return tasks;
+        var groups = [];
+        _.each(tasks, function(task) {
+            var group_name = task[_.first(group_bys)];
+            var group = _.find(groups, function(group) { return _.isEqual(group.name, group_name); });
+            if (group === undefined) {
+                group = {name:group_name, tasks: [], __is_group: true};
+                groups.push(group);
+            }
+            group.tasks.push(task);
+        });
+        _.each(groups, function(group) {
+            group.tasks = self.split_groups(group.tasks, _.rest(group_bys));
+        });
+        return groups;
+    },
+    generate_task_info: function(task, plevel, project_id,
+                                 tasks, total_percent, total_task,
+                                 group_bys) {
+        var self = this;
+        if (_.isNumber(task[self.fields_view.arch.attrs.progress])) {
+            var percent = task[self.fields_view.arch.attrs.progress] || 0;
+        } else {
+            var percent = 100;
+        }
+        var level = plevel || 0;
+        project_id = project_id || _.uniqueId("gantt_project_");
+        if (task.__is_group) {
+            var task_infos = _.compact(_.map(task.tasks, function(sub_task) {
+                return self.generate_task_info(
+                    sub_task, level + 1, project_id,
+                    tasks, total_percent, total_task,
+                    group_bys);
+            }));
+            if (task_infos.length == 0)
+                return;
+            var task_start = _.reduce(_.pluck(task_infos, "task_start"), function(date, memo) {
+                return memo === undefined || date < memo ? date : memo;
+            }, undefined);
+            var task_stop = _.reduce(_.pluck(task_infos, "task_stop"), function(date, memo) {
+                return memo === undefined || date > memo ? date : memo;
+            }, undefined);
+            var duration = (task_stop.getTime() - task_start.getTime()) / (1000 * 60 * 60);
+            var group_name = task.name ? instance.web.format_value(
+                task.name, self.fields[group_bys[level]]) : "-";
+            if (level == 0) {
+                gantt.addTask({
+                    'id': project_id,
+                    'text': group_name,
+                    'start_date': task_start,
+                    'duration': ((duration / 24) * 8) * 3 || 1,
+                    'progress': total_percent / total_task / 100,
+                });
+                total_task = total_percent = 0;
+                return {task_start: task_start, task_stop: task_stop};
+            } else {
+              var id = _.uniqueId("gantt_project_task_");
+              var task_data = {
+                  'id': id,
+                  'text': group_name,
+                  'start_date': task_start,
+                  'duration': duration || 1,
+                  'progress': percent / 100,
+                  'parent': project_id,
+              }
+              self.update_task_data(task, task_data);
+              tasks.push(task_data);
+              total_task = total_percent = 0;
+              return {task_start: task_start, task_stop: task_stop};
+          }
+        } else {
+            var task_name = task.__name;
+            var duration_in_business_hours = false;
+            var task_start = instance.web.auto_str_to_date(
+                task[self.fields_view.arch.attrs.date_start]);
+            if (!task_start)
+                return;
+            var task_stop;
+            if (self.fields_view.arch.attrs.date_stop) {
+                task_stop = instance.web.auto_str_to_date(
+                    task[self.fields_view.arch.attrs.date_stop]);
+                if (!task_stop)
+                    task_stop = task_start;
+            } else { // we assume date_duration is defined
+                var tmp = instance.web.format_value(
+                    task[self.fields_view.arch.attrs.date_delay],
+                    self.fields[self.fields_view.arch.attrs.date_delay]);
+                if (!tmp)
+                    return;
+                var m_task_start = moment(task_start).add(tmp, 'hours');
+                task_stop = m_task_start.toDate();
+            }
+            var duration = (task_stop.getTime() - task_start.getTime()) / (1000 * 60 * 60);
+            total_percent += percent, total_task += 1;
+            // Check condition to apply color.
+            _.each(self.colors, function(color){
+                if(eval("'" + task[color.field] + "' " + color.opt + " '" + color.value + "'"))
+                    self.color = color.color;
+            });
+            var task_data = {
+                'id': "gantt_task_" + task.id,
+                'text': task_name,
+                'start_date': task_start,
+                'duration': (((duration / 24) * 8) * 3 || 1),
+                'progress': percent / 100,
+                'parent': project_id,
+                'color': self.color,
+            }
+            self.update_task_data(task, task_data);
+            tasks.push(task, task_data);
+            self.color = undefined;
+            return {task_start: task_start, task_stop: task_stop};
+        }
+    },
+    update_task_data: function(task, data) {
+        return data;
     },
     scale_zoom: function(value) {
         gantt.config.step = 1;

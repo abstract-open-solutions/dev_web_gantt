@@ -4,7 +4,7 @@
     <t t-name="GanttView" t-extend="GanttView">
         <t t-jquery="div.oe_gantt" t-operation="replace">
             <div class="oe_gantt">
-                <button class="btn btn-primary btn-sm oe_gantt_button_create">Create (MY!!!)</button>
+                <button class="btn btn-primary btn-sm oe_gantt_button_create">Create</button>
                 <div class="btn-group btn-sm" data-toggle="buttons">
                     <label class="btn btn-default btn-sm">
                         <input type="radio" name="scale" value="day" /> Day

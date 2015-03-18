@@ -10,7 +10,7 @@
     </record>
 
     <template id="assets_backend"
-        name="sitibt web_gantt assets"
+        name="dev_web_gantt assets"
         inherit_id="web.assets_backend">
 
         <xpath expr="." position="inside">
@@ -28,7 +28,7 @@
 
         <!-- replace formats with the one from odoo dev -->
         <xpath expr="//script[contains(@src,'formats.js')]" position="attributes">
-            <attribute name="src">/dev_web_gantt/static/src/js/formats.js"</attribute>
+            <attribute name="src">/dev_web_gantt/static/src/js/formats.js</attribute>
         </xpath>
 
     </template>
