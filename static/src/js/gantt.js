@@ -326,7 +326,7 @@ instance.web_gantt.GanttView = instance.web.View.extend({
                 'color': self.color,
             }
             self.update_task_data(task, task_data);
-            tasks.push(task, task_data);
+            tasks.push(task_data);
             self.color = undefined;
             return {task_start: task_start, task_stop: task_stop};
         }
