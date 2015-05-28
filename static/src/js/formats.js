@@ -67,6 +67,28 @@ instance.web.insert_thousand_seps = function (num) {
 };
 
 /**
+ * removes literal (non-format) text from a date or time pattern, as datejs can
+ * not deal with literal text in format strings (whatever the format), whereas
+ * strftime allows for literal characters
+ *
+ * @param {String} value original format
+ */
+instance.web.strip_raw_chars = function (value) {
+    var isletter = /[a-zA-Z]/, output = [];
+    for(var index=0; index < value.length; ++index) {
+        var character = value[index];
+        if(isletter.test(character) && (index === 0 || value[index-1] !== '%')) {
+            continue;
+        }
+        output.push(character);
+    }
+    return output.join('');
+};
+var normalize_format = function (format) {
+    return Date.normalizeFormat(instance.web.strip_raw_chars(format));
+};
+
+/**
  * Check with a scary heuristic if the value is a bin_size or not.
  * If not, compute an approximate size out of the base64 encoded string.
  *
